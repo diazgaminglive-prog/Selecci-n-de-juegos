@@ -1,0 +1,563 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Election Game - Vota y Gana</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Russo+One&display=swap" rel="stylesheet">
+    <style>
+        /* OPTIMIZACIÓN MÓVIL Y CUERPO HORIZONTAL */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f1a;
+            background-image: radial-gradient(circle at 50% 0%, #1a1a3a 0%, transparent 50%);
+            font-family: 'Russo One', sans-serif;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #bubbles-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            overflow: hidden;
+        }
+
+        .game-logo {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            text-align: center;
+            z-index: 10;
+            position: relative;
+            width: 100%;
+        }
+        .game-logo h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1.2em, 4vw, 2.2em); /* Tamaño responsivo */
+            color: #fff;
+            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #ff00de;
+            margin: 0;
+        }
+        .game-logo h2 {
+            font-family: 'Russo One', sans-serif;
+            color: #00f3ff;
+            font-size: clamp(0.6em, 2vw, 1.2em);
+            letter-spacing: 4px;
+            margin-top: 5px;
+            text-shadow: 0 0 10px #00f3ff;
+        }
+
+        .name-section {
+            margin: 10px 0;
+            text-align: center;
+            z-index: 10;
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+        }
+        /* CAMPO MITAD AZUL, MITAD FUCSIA, BORDE Y TEXTO DORADO */
+        .name-input {
+            background: linear-gradient(90deg, #0077aa 50%, #aa0088 50%);
+            border: 3px solid #FFD700;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Russo One', sans-serif;
+            font-size: clamp(0.8em, 2.5vw, 1.1em);
+            color: #FFD700;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            text-shadow: 0 0 5px rgba(0,0,0,0.8);
+        }
+        .name-input::placeholder { color: #e6c200; opacity: 0.8; }
+
+        /* CONTENEDOR HORIZONTAL PRINCIPAL */
+        .battle-container {
+            display: flex;
+            flex-direction: row; /* FORZAR HORIZONTAL */
+            justify-content: center;
+            align-items: flex-start;
+            gap: 10px;
+            width: 100%;
+            max-width: 1000px;
+            z-index: 10;
+            position: relative;
+            flex-wrap: nowrap; /* NO APILAR EN MÓVIL */
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            width: 50%; /* OCUPA MITAD EXACTA */
+            padding: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .card-patria { border-color: #00f3ff; box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
+        .card-pacto { border-color: #ff00de; box-shadow: 0 0 15px rgba(255, 0, 222, 0.2); }
+
+        /* CANDIDATOS ARRIBA (HORIZONTAL) */
+        .candidatos-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .candidato {
+            width: clamp(60px, 15vw, 90px); /* TAMAÑO RESPONSIVO */
+            height: clamp(60px, 15vw, 90px);
+            border-radius: 10px;
+            object-fit: contain;
+            background-color: #0a0a15; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card-patria .candidato { box-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
+        .card-pacto .candidato { box-shadow: 0 0 10px rgba(255, 0, 222, 0.4); }
+
+        .card h2 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.8em, 2.5vw, 1.2em);
+            margin: 5px 0;
+        }
+        .card-patria h2 { color: #00f3ff; text-shadow: 0 0 10px #00f3ff; }
+        .card-pacto h2 { color: #ff00de; text-shadow: 0 0 10px #ff00de; }
+
+        .card p { font-size: clamp(0.6em, 2vw, 0.9em); margin: 4px 0; color: #ccc; }
+        
+        .puntos-numero {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.8em, 2.5vw, 1.2em);
+            color: #fff;
+        }
+        .card-patria .puntos-numero { color: #00f3ff; text-shadow: 0 0 10px #00f3ff; }
+        .card-pacto .puntos-numero { color: #ff00de; text-shadow: 0 0 10px #ff00de; }
+
+        .total-numero { font-size: 0.9em; color: #fff; }
+        .meta-text { font-size: 0.6em; color: #888; margin-bottom: 5px !important; }
+        .meta-highlight { color: #ffcc00; font-weight: bold; }
+
+        /* BARRAS AZUL Y FUCSIA */
+        .barra {
+            width: 100%;
+            height: 15px;
+            background-color: #222;
+            border-radius: 8px;
+            margin: 5px 0 10px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+        .progreso {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s ease-out;
+            width: 0%;
+        }
+        .card-patria .progreso { background: linear-gradient(90deg, #0077aa, #00f3ff); box-shadow: 0 0 10px #00f3ff; }
+        .card-pacto .progreso { background: linear-gradient(90deg, #aa0088, #ff00de); box-shadow: 0 0 10px #ff00de; }
+
+        .btn-votar {
+            width: 100%;
+            padding: 8px 5px;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.5em, 1.8vw, 0.8em);
+            cursor: pointer;
+            color: white;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        .btn-votar:active { transform: scale(0.95); }
+        .btn-votar:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .card-patria .btn-votar { background: linear-gradient(90deg, #0077aa, #00f3ff); box-shadow: 0 5px 15px rgba(0, 243, 255, 0.3); }
+        .card-pacto .btn-votar { background: linear-gradient(90deg, #aa0088, #ff00de); box-shadow: 0 5px 15px rgba(255, 0, 222, 0.3); }
+
+        /* FILA HORIZONTAL DE LOS 4 PREMIOS */
+        .prizes-row {
+            display: flex;
+            flex-direction: row; /* HORIZONTAL */
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            z-index: 10;
+            position: relative;
+            flex-wrap: nowrap; /* NO APILAR */
+            width: 100%;
+            max-width: 600px;
+        }
+        .prize-img {
+            width: clamp(60px, 18vw, 100px); /* REDUCIDO PARA CELULAR */
+            height: clamp(60px, 18vw, 100px);
+            object-fit: contain;
+        }
+        .prize-blue { filter: drop-shadow(0 0 8px #00f3ff); }
+        .prize-pink { filter: drop-shadow(0 0 8px #ff00de); }
+
+        /* BURBUJA DE 1 SEGUNDO */
+        .feedback-bubble {
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid;
+            border-radius: 10px;
+            padding: 5px 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            pointer-events: none;
+            animation: riseFade 1s ease-out forwards;
+            z-index: 20;
+            white-space: nowrap;
+        }
+        .card-patria .feedback-bubble { border-color: #00f3ff; box-shadow: 0 0 10px #00f3ff; }
+        .card-pacto .feedback-bubble { border-color: #ff00de; box-shadow: 0 0 10px #ff00de; }
+        
+        .fb-logo { width: 25px; height: 25px; object-fit: contain; border-radius: 50%; }
+        .fb-candidato { width: 25px; height: 25px; object-fit: contain; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); }
+        .fb-text { font-family: 'Press Start 2P', cursive; font-size: 0.5em; color: white; line-height: 1.3; text-align: left; }
+        .fb-text span { color: #ffcc00; font-size: 1.2em; display: block; margin-top: 2px; }
+
+        @keyframes riseFade {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.8); }
+            30% { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(1.1); }
+        }
+
+        /* BURBUJAS AMBIENTALES */
+        .voter-bubble {
+            position: absolute;
+            background: rgba(10, 10, 26, 0.8);
+            border: 2px solid;
+            border-radius: 30px;
+            padding: 5px 15px 5px 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            animation-direction: alternate;
+        }
+        .voter-bubble.patria { border-color: #00f3ff; box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
+        .voter-bubble.pacto { border-color: #ff00de; box-shadow: 0 0 10px rgba(255, 0, 222, 0.2); }
+        .voter-bubble img { width: 30px; height: 30px; object-fit: contain; border-radius: 50%; background: #000; }
+        .voter-bubble span { font-size: 0.7em; font-weight: bold; color: white; white-space: nowrap; }
+
+        @keyframes move1 { 0% { transform: translate(0, 0); } 100% { transform: translate(80px, -50px); } }
+        @keyframes move2 { 0% { transform: translate(0, 0); } 100% { transform: translate(-60px, 40px); } }
+        @keyframes move3 { 0% { transform: translate(0, 0); } 100% { transform: translate(40px, 60px); } }
+        @keyframes move4 { 0% { transform: translate(0, 0); } 100% { transform: translate(-50px, -45px); } }
+        @keyframes move5 { 0% { transform: translate(0, 0); } 100% { transform: translate(25px, -65px); } }
+
+        /* BOTONES INFERIORES */
+        .buttons-section { 
+            margin: 20px 0 10px 0; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            z-index: 10; 
+            position: relative; 
+        }
+        
+        .btn-action {
+            color: white;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.7em;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid;
+        }
+        .btn-action:hover { transform: scale(1.05); }
+        .btn-reset {
+            background: linear-gradient(90deg, #b71c1c, #f44336);
+            border-color: #ff5252;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .lion-img {
+            width: clamp(80px, 20vw, 120px);
+            height: clamp(80px, 20vw, 120px);
+            object-fit: contain;
+            margin-top: 10px;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+        }
+
+        #win-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            animation: fadeIn 0.5s;
+        }
+        #win-text {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1.5em, 5vw, 2.5em);
+            text-align: center;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px currentColor;
+            animation: pulse 1s infinite;
+        }
+        .win-patria { color: #00f3ff; }
+        .win-pacto { color: #ff00de; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <div id="bubbles-container"></div>
+
+    <div class="game-logo">
+        <h1>ELECTION</h1>
+        <h2>Vota y Gana</h2>
+    </div>
+
+    <div class="name-section">
+        <input type="text" id="voter-name" class="name-input" placeholder="Escribe tu nombre aquí">
+    </div>
+
+    <div class="battle-container">
+        
+        <!-- EQUIPO PATRIA (IZQUIERDA) -->
+        <div class="card card-patria" id="card-patria">
+            <div class="candidatos-row">
+                <img src="https://z-cdn-media.chatglm.cn/files/798f6152-dae0-45cb-8a2e-47eac076f1f8.png?auth_key=1880295310-c1d3d6facff7489091e9ca556bd10b7f-0-914b1e6216420920d15f05a559ca3b2f" class="candidato" alt="Abelardo">
+                <img src="https://z-cdn-media.chatglm.cn/files/581ef075-6d1f-4bdf-bb1b-3de2aa82a777.png?auth_key=1880295310-18c6705372174ef9980f21f065acce49-0-67c64ff474298fd482496c531b55099b" class="candidato" alt="Restrepo">
+            </div>
+            
+            <h2>PATRIA</h2>
+            <p>Puntos: <span class="puntos-numero" id="puntos-patria">0</span></p>
+            <p>Total: <span class="total-numero" id="total-patria">10.361.413</span></p>
+            <p class="meta-text">Meta: <span class="meta-highlight">100.456.879</span></p>
+            <div class="barra">
+                <div class="progreso" id="barra-patria"></div>
+            </div>
+            
+            <button class="btn-votar" id="btn-patria" onclick="votar('patria')">VOTAR +2</button>
+        </div>
+
+        <!-- EQUIPO PACTO HCO (DERECHA) -->
+        <div class="card card-pacto" id="card-pacto">
+            <div class="candidatos-row">
+                <img src="https://z-cdn-media.chatglm.cn/files/9e15a77a-70c3-4987-9d26-3a89ea9ae2e5.png?auth_key=1880295310-a0d9723304994d46bfc386ddf9302393-0-3b9ee727b49960cc8bc8fdd6b98ba65e" class="candidato" alt="Iván">
+                <img src="https://z-cdn-media.chatglm.cn/files/70d9b300-ae44-4922-a2b6-ce29db16a02e.png?auth_key=1880295310-62e037234de1486d8f61ccecb966a25e-0-2b28fb102e27dd73edb03834c7b38150" class="candidato" alt="Aida">
+            </div>
+
+            <h2>PACTO HCO</h2>
+            <p>Puntos: <span class="puntos-numero" id="puntos-pacto">0</span></p>
+            <p>Total: <span class="total-numero" id="total-pacto">9.688.245</span></p>
+            <p class="meta-text">Meta: <span class="meta-highlight">100.456.879</span></p>
+            <div class="barra">
+                <div class="progreso" id="barra-pacto"></div>
+            </div>
+            
+            <button class="btn-votar" id="btn-pacto" onclick="votar('pacto')">VOTAR +2</button>
+        </div>
+
+    </div>
+
+    <!-- FILA HORIZONTAL DE 4 PREMIOS -->
+    <div class="prizes-row">
+        <!-- AZUL (PATRIA) -->
+        <img src="https://z-cdn-media.chatglm.cn/files/c3a7b9e5-c002-4231-8469-7822b232f4c0.png?auth_key=1880297723-2876587edd044a0f8dbb91934c98ea1d-0-63268859878ac603bec302efea3761f9" class="prize-img prize-blue" alt="Rosa">
+        <img src="https://z-cdn-media.chatglm.cn/files/c3a7b9e5-c002-4231-8469-7822b232f4c0.png?auth_key=1880297723-2876587edd044a0f8dbb91934c98ea1d-0-63268859878ac603bec302efea3761f9" class="prize-img prize-blue" alt="Guantes">
+        <!-- FUCSIA (PACTO) -->
+        <img src="https://z-cdn-media.chatglm.cn/files/bd4b79f3-a706-49dd-a667-3c7b092bf657.png?auth_key=1880297723-7ac2b1760bd24d3cb245b740cdc050d1-0-4000c3e0903619f0a6c7c53d5d4b6a0a" class="prize-img prize-pink" alt="GG">
+        <img src="https://z-cdn-media.chatglm.cn/files/bd4b79f3-a706-49dd-a667-3c7b092bf657.png?auth_key=1880297723-7ac2b1760bd24d3cb245b740cdc050d1-0-4000c3e0903619f0a6c7c53d5d4b6a0a" class="prize-img prize-pink" alt="Osito">
+    </div>
+
+    <!-- BOTÓN RESETEAR Y LEÓN -->
+    <div class="buttons-section">
+        <button class="btn-action btn-reset" onclick="resetearJuego()">RESETEAR JUEGO</button>
+        <img src="https://z-cdn-media.chatglm.cn/files/cebdd902-a42f-404c-8d84-f4bf40d32469.png?auth_key=1880297723-863edd8d20484322b76d624b54a9376f-0-95af08eca606f473fbb290998c63e3b2" class="lion-img" alt="León">
+    </div>
+
+    <div id="win-overlay">
+        <div id="win-text">¡GANA PATRIA!</div>
+        <button class="btn-action btn-reset" onclick="resetearJuego()">JUGAR DE NUEVO</button>
+    </div>
+
+    <script>
+        // Configuración inicial
+        const BASE_PATRIA = 10361413;
+        const BASE_PACTO = 9688245;
+        const META_VICTORIA = 100456879;
+
+        // URLs logos
+        const LOGO_PATRIA = "https://z-cdn-media.chatglm.cn/files/c3a7b9e5-c002-4231-8469-7822b232f4c0.png?auth_key=1880297723-2876587edd044a0f8dbb91934c98ea1d-0-63268859878ac603bec302efea3761f9";
+        const LOGO_PACTO = "https://z-cdn-media.chatglm.cn/files/bd4b79f3-a706-49dd-a667-3c7b092bf657.png?auth_key=1880297723-7ac2b1760bd24d3cb245b740cdc050d1-0-4000c3e0903619f0a6c7c53d5d4b6a0a";
+        
+        // URLs candidatos (burbuja 1s)
+        const CAND_PATRIA = [
+            "https://z-cdn-media.chatglm.cn/files/798f6152-dae0-45cb-8a2e-47eac076f1f8.png?auth_key=1880295310-c1d3d6facff7489091e9ca556bd10b7f-0-914b1e6216420920d15f05a559ca3b2f",
+            "https://z-cdn-media.chatglm.cn/files/581ef075-6d1f-4bdf-bb1b-3de2aa82a777.png?auth_key=1880295310-18c6705372174ef9980f21f065acce49-0-67c64ff474298fd482496c531b55099b"
+        ];
+        const CAND_PACTO = [
+            "https://z-cdn-media.chatglm.cn/files/9e15a77a-70c3-4987-9d26-3a89ea9ae2e5.png?auth_key=1880295310-a0d9723304994d46bfc386ddf9302393-0-3b9ee727b49960cc8bc8fdd6b98ba65e",
+            "https://z-cdn-media.chatglm.cn/files/70d9b300-ae44-4922-a2b6-ce29db16a02e.png?auth_key=1880295310-62e037234de1486d8f61ccecb966a25e-0-2b28fb102e27dd73edb03834c7b38150"
+        ];
+
+        let puntosPatria = 0;
+        let puntosPacto = 0;
+        let juegoTerminado = false;
+
+        function votar(equipo) {
+            if (juegoTerminado) return;
+
+            let nombre = document.getElementById('voter-name').value.trim();
+            if (nombre === "") nombre = "Anónimo";
+
+            let candidatoRandom = "";
+
+            if (equipo === 'patria') {
+                puntosPatria += 2;
+                candidatoRandom = CAND_PATRIA[Math.floor(Math.random() * CAND_PATRIA.length)];
+                crearBurbujaFeedback('card-patria', nombre, LOGO_PATRIA, candidatoRandom);
+                crearBurbujaAmbiental(nombre, LOGO_PATRIA, 'patria');
+            } else {
+                puntosPacto += 2;
+                candidatoRandom = CAND_PACTO[Math.floor(Math.random() * CAND_PACTO.length)];
+                crearBurbujaFeedback('card-pacto', nombre, LOGO_PACTO, candidatoRandom);
+                crearBurbujaAmbiental(nombre, LOGO_PACTO, 'pacto');
+            }
+
+            actualizarUI();
+            verificarVictoria();
+        }
+
+        function crearBurbujaFeedback(cardId, nombre, logoUrl, candidatoUrl) {
+            const card = document.getElementById(cardId);
+            const bubble = document.createElement('div');
+            bubble.classList.add('feedback-bubble');
+            
+            bubble.innerHTML = `
+                <img src="${logoUrl}" class="fb-logo">
+                <img src="${candidatoUrl}" class="fb-candidato">
+                <div class="fb-text">${nombre} <span>+2</span></div>
+            `;
+            
+            card.appendChild(bubble);
+            setTimeout(() => { bubble.remove(); }, 1000);
+        }
+
+        function crearBurbujaAmbiental(nombre, logoUrl, equipo) {
+            const container = document.getElementById('bubbles-container');
+            if (container.childElementCount > 20) {
+                container.removeChild(container.firstChild);
+            }
+
+            const bubble = document.createElement('div');
+            bubble.classList.add('voter-bubble', equipo);
+            
+            bubble.style.top = (Math.random() * 80 + 10) + '%';
+            bubble.style.left = (Math.random() * 80 + 5) + '%';
+
+            const animaciones = ['move1', 'move2', 'move3', 'move4', 'move5'];
+            const animRandom = animaciones[Math.floor(Math.random() * animaciones.length)];
+            const duracionRandom = (Math.random() * 4 + 3).toFixed(1) + 's';
+            
+            bubble.style.animationName = animRandom;
+            bubble.style.animationDuration = duracionRandom;
+
+            const img = document.createElement('img');
+            img.src = logoUrl;
+            const span = document.createElement('span');
+            span.innerText = nombre;
+
+            bubble.appendChild(img);
+            bubble.appendChild(span);
+            container.appendChild(bubble);
+        }
+
+        function actualizarUI() {
+            let totalPatria = BASE_PATRIA + puntosPatria;
+            let totalPacto = BASE_PACTO + puntosPacto;
+
+            document.getElementById('puntos-patria').innerText = puntosPatria.toLocaleString('es-ES');
+            document.getElementById('puntos-pacto').innerText = puntosPacto.toLocaleString('es-ES');
+            document.getElementById('total-patria').innerText = totalPatria.toLocaleString('es-ES');
+            document.getElementById('total-pacto').innerText = totalPacto.toLocaleString('es-ES');
+
+            let progresoPatria = Math.min((totalPatria / META_VICTORIA) * 100, 100);
+            let progresoPacto = Math.min((totalPacto / META_VICTORIA) * 100, 100);
+
+            document.getElementById('barra-patria').style.width = progresoPatria + '%';
+            document.getElementById('barra-pacto').style.width = progresoPacto + '%';
+        }
+
+        function verificarVictoria() {
+            let totalPatria = BASE_PATRIA + puntosPatria;
+            let totalPacto = BASE_PACTO + puntosPacto;
+            let ganador = null;
+
+            if (totalPatria >= META_VICTORIA) {
+                ganador = 'patria';
+            } else if (totalPacto >= META_VICTORIA) {
+                ganador = 'pacto';
+            }
+
+            if (ganador) {
+                juegoTerminado = true;
+                document.getElementById('btn-patria').disabled = true;
+                document.getElementById('btn-pacto').disabled = true;
+
+                const overlay = document.getElementById('win-overlay');
+                const winText = document.getElementById('win-text');
+                
+                overlay.style.display = 'flex';
+                
+                if (ganador === 'patria') {
+                    winText.innerHTML = '¡PATRIA GANA<br>LAS ELECCIONES!';
+                    winText.className = 'win-patria';
+                } else {
+                    winText.innerHTML = '¡PACTO HCO GANA<br>LAS ELECCIONES!';
+                    winText.className = 'win-pacto';
+                }
+            }
+        }
+
+        function resetearJuego() {
+            puntosPatria = 0;
+            puntosPacto = 0;
+            juegoTerminado = false;
+
+            document.getElementById('btn-patria').disabled = false;
+            document.getElementById('btn-pacto').disabled = false;
+            document.getElementById('win-overlay').style.display = 'none';
+            document.getElementById('bubbles-container').innerHTML = '';
+
+            actualizarUI();
+        }
+
+        actualizarUI();
+    </script>
+</body>
+</html>
+```
